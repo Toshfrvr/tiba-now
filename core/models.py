@@ -9,7 +9,7 @@ class Specialist(models.Model):
         return self.name
 
 class Doctor(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True)
     specialty = models.ForeignKey(Specialist, on_delete=models.SET_NULL, null=True)
     bio = models.TextField()
     is_available = models.BooleanField(default=True)

@@ -14,7 +14,8 @@ from .views import (
     AppointmentCreateView,
     MyAppointmentsView,
     SymptomMatchView,
-    RegisterView,  # 💥 Add this import
+    RegisterView,        #  Register endpoint
+    UserRoleView,        #  Add role-checker view
 )
 
 router = DefaultRouter()
@@ -25,17 +26,19 @@ router.register(r'specialists', SpecialistViewSet)
 router.register(r'payments', PaymentViewSet)
 
 urlpatterns = [
-    # 🔐 Auth Endpoints
-    path('auth/register/', RegisterView.as_view(), name='auth_register'),  # 🌟 New registration path
+    #  Authentication Endpoints
+    path('auth/register/', RegisterView.as_view(), name='auth_register'),
     path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/role/', UserRoleView.as_view(), name='user_role'),  #  Identify user role (patient/doctor/admin)
 
-    # 🩺 Custom Endpoints
-    path('doctors/by-specialty/', DoctorBySpecialtyView.as_view(), name='doctors_by_specialty'),
+    #  Custom Endpoints
+    path('doctors/by-specialty/', DoctorBySpecialtyView.as_view(), name='doctors_by_specialty'), 
     path('appointments/book/', AppointmentCreateView.as_view(), name='appointment_create'),
     path('appointments/my/', MyAppointmentsView.as_view(), name='my_appointments'),
     path('symptom-match/', SymptomMatchView.as_view(), name='symptom_match'),
 
-    # 🔁 ViewSets
+    #  ViewSets
     path('', include(router.urls)),
+    
 ]
