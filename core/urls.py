@@ -1,9 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
+from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     DoctorViewSet,
     PatientViewSet,
@@ -14,8 +11,9 @@ from .views import (
     AppointmentCreateView,
     MyAppointmentsView,
     SymptomMatchView,
-    RegisterView,        #  Register endpoint
-    UserRoleView,        #  Add role-checker view
+    RegisterView,
+    UserRoleView,
+    CustomTokenObtainPairView,  # 👈 Custom Login View
 )
 
 router = DefaultRouter()
@@ -26,19 +24,18 @@ router.register(r'specialists', SpecialistViewSet)
 router.register(r'payments', PaymentViewSet)
 
 urlpatterns = [
-    #  Authentication Endpoints
+    # 🛡️ Authentication Endpoints
     path('auth/register/', RegisterView.as_view(), name='auth_register'),
-    path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),  # 👈 Use custom login
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('auth/role/', UserRoleView.as_view(), name='user_role'),  #  Identify user role (patient/doctor/admin)
+    path('auth/role/', UserRoleView.as_view(), name='user_role'),
 
-    #  Custom Endpoints
+    # 🩺 Custom API Endpoints
     path('doctors/by-specialty/', DoctorBySpecialtyView.as_view(), name='doctors_by_specialty'), 
     path('appointments/book/', AppointmentCreateView.as_view(), name='appointment_create'),
     path('appointments/my/', MyAppointmentsView.as_view(), name='my_appointments'),
     path('symptom-match/', SymptomMatchView.as_view(), name='symptom_match'),
 
-    #  ViewSets
+    # 🔁 ViewSet Routes
     path('', include(router.urls)),
-    
 ]

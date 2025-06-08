@@ -5,6 +5,9 @@ from rest_framework.exceptions import PermissionDenied
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 from .models import Doctor, Patient, Appointment, Specialist, Payment, SymptomSpecialtyMap
 from .serializers import (
     DoctorSerializer,
@@ -19,7 +22,30 @@ from .serializers import (
 
 User = get_user_model()
 
-#  User Registration View
+# 🌟 Custom JWT Login with Role
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        user = self.user
+
+        if user.is_staff:
+            role = "admin"
+        elif hasattr(user, "doctor"):
+            role = "doctor"
+        elif hasattr(user, "patient"):
+            role = "patient"
+        else:
+            role = "user"
+
+        data["role"] = role
+        data["username"] = user.username
+        return data
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+
+
+# ✅ User Registration View
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
@@ -34,7 +60,7 @@ class RegisterView(generics.CreateAPIView):
             Doctor.objects.get_or_create(user=user)
 
 
-#  Check Logged-in User Role
+# 🧠 Check Logged-in User Role
 class UserRoleView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -49,14 +75,14 @@ class UserRoleView(APIView):
         return Response({"username": user.username, "role": role})
 
 
-# Doctor ViewSet (CRUD - Admin only)
+# 🔍 Doctor ViewSet (CRUD - Admin only)
 class DoctorViewSet(viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
     permission_classes = [permissions.IsAdminUser]
 
 
-# Doctor Listings by Specialty (Public)
+# 🔍 Doctor Listings by Specialty (Public)
 class DoctorBySpecialtyView(generics.ListAPIView):
     serializer_class = DoctorSerializer
     permission_classes = [permissions.AllowAny]
@@ -68,14 +94,14 @@ class DoctorBySpecialtyView(generics.ListAPIView):
         return Doctor.objects.all()
 
 
-# Patient ViewSet
+# 💳 Patient ViewSet
 class PatientViewSet(viewsets.ModelViewSet):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-# Appointment ViewSet
+# 📅 Appointment ViewSet
 class AppointmentViewSet(viewsets.ModelViewSet):
     queryset = Appointment.objects.all()
     serializer_class = AppointmentSerializer
@@ -89,7 +115,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("You must have a patient profile to book an appointment.")
 
 
-# Book Appointment (Quick Create)
+# ⚡ Book Appointment (Quick Create)
 class AppointmentCreateView(generics.CreateAPIView):
     serializer_class = AppointmentSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -98,7 +124,7 @@ class AppointmentCreateView(generics.CreateAPIView):
         serializer.save(user=self.request.user)
 
 
-# View My Bookings
+# 📋 View My Bookings
 class MyAppointmentsView(generics.ListAPIView):
     serializer_class = AppointmentSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -111,14 +137,14 @@ class MyAppointmentsView(generics.ListAPIView):
             return Appointment.objects.none()
 
 
-# Specialist ViewSet
+# 🩺 Specialist ViewSet
 class SpecialistViewSet(viewsets.ModelViewSet):
     queryset = Specialist.objects.all()
     serializer_class = SpecialistSerializer
     permission_classes = [permissions.AllowAny]
 
 
-# Symptom Matching Assistant
+# 🤖 Symptom Matching Assistant
 class SymptomMatchView(generics.ListAPIView):
     serializer_class = SymptomSpecialtyMapSerializer
     permission_classes = [permissions.AllowAny]
@@ -137,7 +163,7 @@ class SymptomMatchView(generics.ListAPIView):
         return Response(serializer.data)
 
 
-# Payment ViewSet
+# 💰 Payment ViewSet
 class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
