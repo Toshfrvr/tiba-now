@@ -1,20 +1,81 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from rest_framework import generics, permissions, viewsets
 from .models import Doctor, Patient, Appointment, Specialist, Payment, SymptomSpecialtyMap
-from django.contrib.auth.models import User
-
 
 User = get_user_model()
 
-#  User Serializer
+# ✅ User Serializer with full_name
 class UserSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'is_staff']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'full_name', 'is_staff']
 
-#  Register Serializer
+    def get_full_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}".strip()
+
+
+# ✅ Specialist Serializer
+class SpecialistSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Specialist
+        fields = ['id', 'name', 'description']
+
+
+# ✅ Doctor Serializer
+class DoctorSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    specialty = SpecialistSerializer(read_only=True)
+
+    class Meta:
+        model = Doctor
+        fields = ['id', 'user', 'specialty', 'bio', 'is_available', 'available_times']
+
+
+# ✅ Patient Serializer
+class PatientSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Patient
+        fields = ['id', 'user', 'age', 'gender', 'phone', 'address']
+
+
+# ✅ Appointment Serializer
+class AppointmentSerializer(serializers.ModelSerializer):
+    doctor = serializers.PrimaryKeyRelatedField(queryset=Doctor.objects.all(), write_only=True)
+    doctor_detail = DoctorSerializer(source='doctor', read_only=True)
+    patient_detail = PatientSerializer(source='patient', read_only=True)
+
+    class Meta:
+        model = Appointment
+        fields = ['id', 'doctor', 'doctor_detail', 'patient_detail', 'date', 'time', 'status', 'notes']
+
+    def create(self, validated_data):
+        validated_data.pop('user', None)  # Just in case
+        return super().create(validated_data)
+
+
+# ✅ Payment Serializer
+class PaymentSerializer(serializers.ModelSerializer):
+    appointment = serializers.PrimaryKeyRelatedField(queryset=Appointment.objects.all(), write_only=True)
+    appointment_detail = AppointmentSerializer(source='appointment', read_only=True)
+
+    class Meta:
+        model = Payment
+        fields = ['id', 'appointment', 'appointment_detail', 'amount', 'method', 'transaction_id', 'status', 'created_at']
+
+
+# ✅ Symptom Match Serializer
+class SymptomSpecialtyMapSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SymptomSpecialtyMap
+        fields = ['id', 'symptom', 'specialty']
+
+
+# ✅ Register Serializer
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True, required=True)
@@ -72,56 +133,4 @@ class RegisterSerializer(serializers.ModelSerializer):
         elif is_doctor:
             Doctor.objects.create(user=user, bio=bio, specialty=specialty)
 
-        return user 
-    #  Specialist Serializer
-class SpecialistSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Specialist
-        fields = ['id', 'name', 'description']
-
-#  Doctor Serializer
-class DoctorSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    specialty = SpecialistSerializer(read_only=True)
-
-    class Meta:
-        model = Doctor
-        fields = ['id', 'user', 'specialty', 'bio', 'is_available', 'available_times']
-
-#  Patient Serializer
-class PatientSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-
-    class Meta:
-        model = Patient
-        fields = ['id', 'user', 'age', 'gender', 'phone', 'address']
-
-#  Appointment Serializer
-class AppointmentSerializer(serializers.ModelSerializer):
-    doctor = serializers.PrimaryKeyRelatedField(queryset=Doctor.objects.all(), write_only=True)
-    doctor_detail = DoctorSerializer(source='doctor', read_only=True)
-    patient_detail = PatientSerializer(source='patient', read_only=True)
-
-    class Meta:
-        model = Appointment
-        fields = ['id', 'doctor', 'doctor_detail', 'patient_detail', 'date', 'time', 'status', 'notes']
-
-    def create(self, validated_data):
-        # Strip out user if accidentally passed
-        validated_data.pop('user', None)
-        return super().create(validated_data)
-
-#  Payment Serializer
-class PaymentSerializer(serializers.ModelSerializer):
-    appointment = serializers.PrimaryKeyRelatedField(queryset=Appointment.objects.all(), write_only=True)
-    appointment_detail = AppointmentSerializer(source='appointment', read_only=True)
-
-    class Meta:
-        model = Payment
-        fields = ['id', 'appointment', 'appointment_detail', 'amount', 'method', 'transaction_id', 'status', 'created_at']
-
-#  Symptom Match Serializer
-class SymptomSpecialtyMapSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SymptomSpecialtyMap
-        fields = ['id', 'symptom', 'specialty']
+        return user
